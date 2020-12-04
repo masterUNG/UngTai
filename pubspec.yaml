@@ -39,6 +39,8 @@ dependencies:
   firebase_core: ^0.5.2+1
   firebase_messaging: ^7.0.3
   hand_signature: ^0.6.3
+  # simple_permissions: ^0.1.6
+  
 
 dev_dependencies:
   flutter_test:

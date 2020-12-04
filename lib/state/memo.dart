@@ -1,145 +1,241 @@
-import 'dart:async';
 import 'dart:io';
+import 'dart:async';
 import 'dart:typed_data';
-
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'dart:ui' as ui;
+import 'package:path_provider/path_provider.dart';
+// import 'package:simple_permissions/simple_permissions.dart';
 
-import 'package:ungtai/utility/my_style.dart';
+const directoryName = 'Signature';
+
+
 
 class Memo extends StatefulWidget {
   @override
-  _MemoState createState() => _MemoState();
+  State<StatefulWidget> createState() {
+    return MemoState();
+  }
 }
 
-class _MemoState extends State<Memo> {
-  ui.Image image;
-  bool isImageLoad = false;
-  GlobalKey<_MemoState> canvasKey = GlobalKey();
+class MemoState extends State<Memo> {
+  GlobalKey<SignatureState> signatureKey = GlobalKey();
+  var image;
+  String _platformVersion = 'Unknown';
+  // Permission _permission = Permission.WriteExternalStorage;
 
   @override
   void initState() {
-    // TODO: implement initState
     super.initState();
-    init();
+    initPlatformState();
   }
+  // Platform messages are asynchronous, so we initialize in an async method.
+  initPlatformState() async {
+    String platformVersion;
+    // Platform messages may fail, so we use a try/catch PlatformException.
+    try {
+      // platformVersion = await SimplePermissions.platformVersion;
+    } on PlatformException {
+      platformVersion = 'Failed to get platform version.';
+    }
 
-  Future<Null> init() async {
-    final ByteData byteData = await rootBundle.load('images/paper2.png');
-    image = await loadImage(Uint8List.view(byteData.buffer));
-  }
+    // If the widget was removed from the tree while the asynchronous platform
+    // message was in flight, we want to discard the reply rather than calling
+    // setState to update our non-existent appearance.
+    if (!mounted) return;
 
-  Future<ui.Image> loadImage(List<int> list) async {
-    final Completer<ui.Image> completer = Completer();
-    ui.decodeImageFromList(list, (result) {
-      print('rander image success');
-      setState(() {
-        isImageLoad = true;
-      });
-      return completer.complete(result);
+    setState(() {
+      _platformVersion = platformVersion;
     });
-    return completer.future;
-  }
-
-  Future<Null> saveImage() async {
-    var object = await recordProcess;
-    print('object ==> ${object.toString()}');
-  }
-
-  Future<ui.Image> get recordProcess async {
-    ui.PictureRecorder recorder = ui.PictureRecorder();
-    Canvas canvas = Canvas(recorder);
-    var size = context.size;
-    return recorder.endRecording().toImage(300, 300);
+    print(_platformVersion);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: isImageLoad
-          ? Stack(
-              children: [
-                buildSignature(),
-                Column(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: [
-                        ElevatedButton(
-                          onPressed: () {
-                            setState(() {
-                              canvasKey.currentState.
-                            });
-                          },
-                          child: Text('Clear'),
-                        ),
-                        ElevatedButton(
-                          onPressed: () => saveImage(),
-                          child: Text('Save'),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ],
-            )
-          : MyStyle().showProgress(),
+      body: Signature(key: signatureKey),
+      persistentFooterButtons: <Widget>[
+        FlatButton(
+          child: Text('Clear'),
+          onPressed: () {
+            signatureKey.currentState.clearPoints();
+          },
+        ),
+        FlatButton(
+          child: Text('Save'),
+          onPressed: () {
+            // Future will resolve later
+            // so setState @image here and access in #showImage
+            // to avoid @null Checks
+            setRenderedImage(context);
+          },
+        )
+      ],
     );
   }
 
-  Widget buildSignature() {
-    ImageEditor imageEditor = ImageEditor(image: image);
-    return GestureDetector(
-      onPanDown: (details) {
-        imageEditor.update(details.localPosition);
-        canvasKey.currentContext.findRenderObject().markNeedsPaint();
-      },
-      onPanUpdate: (details) {
-        imageEditor.update(details.localPosition);
-        canvasKey.currentContext.findRenderObject().markNeedsPaint();
-      },
-      child: Container(
-        width: MediaQuery.of(context).size.width,
-        height: MediaQuery.of(context).size.height - 150,
-        // color: Colors.grey,
-        child: CustomPaint(
-          key: canvasKey,
-          painter: imageEditor,
+  setRenderedImage(BuildContext context) async {
+    ui.Image renderedImage = await signatureKey.currentState.rendered;
+
+    setState(() {
+      image = renderedImage;
+    });
+
+    showImage(context);
+  }
+
+  Future<Null> showImage(BuildContext context) async {
+    var pngBytes = await image.toByteData(format: ui.ImageByteFormat.png);
+    if(!(await checkPermission())) await requestPermission();
+    // Use plugin [path_provider] to export image to storage
+    Directory directory = await getExternalStorageDirectory();
+    String path = directory.path;
+    print(path);
+    await Directory('$path/$directoryName').create(recursive: true);
+    File('$path/$directoryName/${formattedDate()}.png')
+        .writeAsBytesSync(pngBytes.buffer.asInt8List());
+    return showDialog<Null>(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: Text(
+              'Please check your device\'s Signature folder',
+              style: TextStyle(
+                fontFamily: 'Roboto',
+                fontWeight: FontWeight.w300,
+                color: Theme.of(context).primaryColor,
+                letterSpacing: 1.1
+              ),
+            ),
+            content: Image.memory(Uint8List.view(pngBytes.buffer)),
+          );
+        }
+    );
+  }
+
+  String formattedDate() {
+    DateTime dateTime = DateTime.now();
+    String dateTimeString = 'Signature_' +
+        dateTime.year.toString() +
+            dateTime.month.toString() +
+            dateTime.day.toString() +
+            dateTime.hour.toString() +
+            ':' + dateTime.minute.toString() +
+            ':' + dateTime.second.toString() +
+            ':' + dateTime.millisecond.toString() +
+            ':' + dateTime.microsecond.toString();
+    return dateTimeString;
+  }
+
+  requestPermission() async {
+    // PermissionStatus result = await SimplePermissions.requestPermission(_permission);
+    return true;
+  }
+
+  checkPermission() async {
+    // bool result = await SimplePermissions.checkPermission(_permission);
+    return true;
+  }
+
+  getPermissionStatus() async {
+    // final result = await SimplePermissions.getPermissionStatus(_permission);
+    // print("permission status is " + result.toString());
+  }
+
+}
+
+class Signature extends StatefulWidget {
+  Signature({Key key}): super(key: key);
+
+  @override
+  State<StatefulWidget> createState() {
+    return SignatureState();
+  }
+}
+
+class SignatureState extends State<Signature> {
+  // [SignatureState] responsible for receives drag/touch events by draw/user
+  // @_points stores the path drawn which is passed to
+  // [SignaturePainter]#contructor to draw canvas
+  List<Offset> _points = <Offset>[];
+
+  Future<ui.Image> get rendered {
+    // [CustomPainter] has its own @canvas to pass our
+    // [ui.PictureRecorder] object must be passed to [Canvas]#contructor
+    // to capture the Image. This way we can pass @recorder to [Canvas]#contructor
+    // using @painter[SignaturePainter] we can call [SignaturePainter]#paint
+    // with the our newly created @canvas
+    ui.PictureRecorder recorder = ui.PictureRecorder();
+    Canvas canvas = Canvas(recorder);
+    SignaturePainter painter = SignaturePainter(points: _points);
+    var size = context.size;
+    painter.paint(canvas, size);
+    return recorder.endRecording()
+        .toImage(size.width.floor(), size.height.floor());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Container(
+        child: GestureDetector(
+          onPanUpdate: (DragUpdateDetails details) {
+            setState(() {
+              RenderBox _object = context.findRenderObject();
+              Offset _locationPoints = _object.localToGlobal(details.globalPosition);
+              _points = new List.from(_points)..add(_locationPoints);
+            });
+          },
+          onPanEnd: (DragEndDetails details) {
+            setState(() {
+              _points.add(null);
+            });
+          },
+          child: CustomPaint(
+            painter: SignaturePainter(points: _points),
+            size: Size.infinite,
+          ),
         ),
       ),
     );
   }
+
+  // clearPoints method used to reset the canvas
+  // method can be called using
+  //   key.currentState.clearPoints();
+  void clearPoints() {
+    setState(() {
+      _points.clear();
+    });
+  }
 }
 
-class ImageEditor extends CustomPainter {
-  ui.Image image;
 
-  ImageEditor({this.image});
+class SignaturePainter extends CustomPainter {
+  // [SignaturePainter] receives points through constructor
+  // @points holds the drawn path in the form (x,y) offset;
+  // This class responsible for drawing only
+  // It won't receive any drag/touch events by draw/user.
+  List<Offset> points = <Offset>[];
 
-  List<Offset> points = List();
-  final Paint painter = Paint()
-    ..color = Colors.blue
-    ..style = PaintingStyle.fill;
-
-  void update(Offset offset) {
-    points.add(offset);
-  }
-
+  SignaturePainter({this.points});
   @override
   void paint(Canvas canvas, Size size) {
-    // TODO: implement paint
-    canvas.drawImage(image, Offset(0.0, 0.0), Paint());
-    for (var offset in points) {
-      canvas.drawCircle(offset, 5, painter);
+    var paint = Paint()
+      ..color = Colors.blue
+      ..strokeCap = StrokeCap.square
+      ..strokeWidth = 5.0;
+
+    for(int i=0; i < points.length - 1; i++) {
+      if(points[i] != null && points[i+1] != null) {
+        canvas.drawLine(points[i], points[i+1], paint);
+      }
     }
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) {
-    // TODO: implement shouldRepaint
-    // throw UnimplementedError();
-    return true;
+  bool shouldRepaint(SignaturePainter oldDelegate) {
+    return oldDelegate.points != points;
   }
+
 }
