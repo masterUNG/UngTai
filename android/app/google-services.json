@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "445250105414",
+    "project_id": "ungtai-ff82b",
+    "storage_bucket": "ungtai-ff82b.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:445250105414:android:b0ff893c34339008d7da47",
+        "android_client_info": {
+          "package_name": "com.flutterthailand.ungtai"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "445250105414-81ouhdqnt52dlgf6sgp4hclthkikjd9r.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCCd0pEgbelqzJbtax2xTYbLiyqqblYcmM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "445250105414-81ouhdqnt52dlgf6sgp4hclthkikjd9r.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "445250105414-pgepmpk6gtqlqepa6vkv9m6c85ismosv.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.flutterthailand.ungtai"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
