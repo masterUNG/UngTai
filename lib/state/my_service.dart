@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ungtai/state/call.dart';
 import 'package:ungtai/state/main_home.dart';
 import 'package:ungtai/state/memo.dart';
+import 'package:ungtai/state/memo2.dart';
 import 'package:ungtai/state/news.dart';
 import 'package:ungtai/state/setting.dart';
 import 'package:ungtai/state/signin.dart';
@@ -229,7 +230,7 @@ class _MyServiceState extends State<MyService> {
     return ListTile(
       onTap: () {
         setState(() {
-          currentWidget = Memo();
+          currentWidget = Memo2();
         });
         Navigator.pop(context);
       },
