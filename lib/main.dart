@@ -9,6 +9,8 @@ Future<Null> main() async {
   runApp(MyApp());
 }
 
+// main() => runApp(MyApp());
+
 class MyHttpOverrides extends HttpOverrides {
   @override
   HttpClient createHttpClient(SecurityContext context) {
